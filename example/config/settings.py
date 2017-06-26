@@ -73,10 +73,21 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
+host = os.environ.get('ZBX_HOST', 'localhost')
+url = os.environ.get('ZBX_API_URL', '')
+username = os.environ('ZBX_USER')
+password = os.environ('ZBX_PASSWORD')
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    },
+    'zabbix_api': {
+        'ENGINE': 'django_zabbix_api.backend',
+        'URL': url,
+        'USER': username,
+        'PASSWORD': password,
     }
 }
 

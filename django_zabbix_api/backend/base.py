@@ -7,6 +7,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.backends.base.client import BaseDatabaseClient
 from django.db.backends.base.creation import BaseDatabaseCreation
+from urllib.parse import urlparse
 
 try:
     import jsonrpcdb as Database
@@ -34,6 +35,10 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     introspection_class = DatabaseIntrospection
     ops_class = DatabaseOperations
 
+    def __init__(self, setting_dict, *args, **kwargs):
+        self.connection = None
+        super(DatabaseWrapper, self).__init__(setting_dict, *args, **kwargs)
+
     def _start_transaction_under_autocommit(self):
         pass
 
@@ -47,10 +52,32 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         pass
 
     def get_connection_params(self):
-        pass
+        setting_dict = self.settings_dict
+        if setting_dict['URL'] == '':
+            raise ImproperlyConfigured(
+                "settings.DATABASE is improperly configured. "
+                "Please supply the URL value."
+            )
+        conn_params = self._parse_url(setting_dict['URL'])
+        if setting_dict['USER']:
+            conn_params['user'] = setting_dict['USER']
+        if setting_dict['PASSWORD']:
+            conn_params['password'] = setting_dict['PASSWORD']
+        return conn_params
 
     def create_cursor(self, name=None):
-        pass
+        return self.connection.cursor()
 
     def get_new_connection(self, conn_params):
-        pass
+        connection = Database.connect(**conn_params)
+        return connection
+
+    def _parse_url(self, url):
+        parts = urlparse(url)
+        return {
+            'schema': parts.schema,
+            'host': parts.hostname,
+            'port': parts.port,
+            'database': parts.path,
+            'auth_type': 'token'
+        }
