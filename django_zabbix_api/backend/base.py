@@ -52,17 +52,18 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         pass
 
     def get_connection_params(self):
-        setting_dict = self.settings_dict
-        if setting_dict['URL'] == '':
+        settings_dict = self.settings_dict
+        if settings_dict['URL'] == '':
             raise ImproperlyConfigured(
                 "settings.DATABASE is improperly configured. "
                 "Please supply the URL value."
             )
-        conn_params = self._parse_url(setting_dict['URL'])
-        if setting_dict['USER']:
-            conn_params['user'] = setting_dict['USER']
-        if setting_dict['PASSWORD']:
-            conn_params['password'] = setting_dict['PASSWORD']
+        conn_params = self._parse_url(settings_dict['URL'])
+        conn_params.update(settings_dict['OPTIONS'])
+        if settings_dict['USER']:
+            conn_params['user'] = settings_dict['USER']
+        if settings_dict['PASSWORD']:
+            conn_params['password'] = settings_dict['PASSWORD']
         return conn_params
 
     def create_cursor(self, name=None):
@@ -74,10 +75,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     def _parse_url(self, url):
         parts = urlparse(url)
-        return {
-            'schema': parts.schema,
+        result = {
+            'schema': parts.scheme,
             'host': parts.hostname,
-            'port': parts.port,
             'database': parts.path,
             'auth_type': 'token'
         }
+        if parts.port:
+            result['port'] = parts.port
+        return result
