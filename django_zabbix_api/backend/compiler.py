@@ -43,7 +43,9 @@ class SQLCompiler(BaseSQLCompiler):
                 return val
             finally:
                 cursor.close()
-                # TODO multi value
+
+        result = cursor_iter(cursor, self._get_field_list(), self.col_count)
+        return result
 
     def as_sql(self, with_limits=True, with_col_aliases=False):
         extra_select, order_by, group_by = self.pre_sql_setup()
@@ -59,4 +61,29 @@ class SQLCompiler(BaseSQLCompiler):
         return sql, params
 
     def results_iter(self, results=None):
-        pass
+        if results is None:
+            results = self.execute_sql(MULTI)
+        fields = [s[0] for s in self.select[0:self.col_count]]
+        converters = self.get_converters(fields)
+        for rows in results:
+            for row in rows:
+                if converters:
+                    row = self.apply_converters(row, converters)
+                yield row
+
+    def _get_field_list(self):
+        return [k[0].field.column for k in self.select[0:self.col_count]]
+
+
+def cursor_iter(cursor, fields, col_count):
+    try:
+        results = iter((lambda: cursor.fetchall()), [])
+        for rows in results:
+            remap_rows = remap_results(rows, fields)
+            yield [r[0:col_count] for r in remap_rows]
+    finally:
+        cursor.close()
+
+
+def remap_results(rows, fields):
+    return [tuple([d.get(k, None) for k in fields]) for d in rows]
