@@ -72,7 +72,7 @@ class SQLCompiler(BaseSQLCompiler):
                 yield row
 
     def _get_field_list(self):
-        return [k[0].field.column for k in self.select[0:self.col_count]]
+        return [(k[0].field.column, k[0].field) for k in self.select[0:self.col_count]]
 
 
 def cursor_iter(cursor, fields, col_count):
@@ -86,4 +86,4 @@ def cursor_iter(cursor, fields, col_count):
 
 
 def remap_results(rows, fields):
-    return [tuple([d.get(k, None) for k in fields]) for d in rows]
+    return [tuple([k[1].to_python(d.get(k[0], None)) for k in fields]) for d in rows]
